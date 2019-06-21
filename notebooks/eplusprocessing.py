@@ -159,18 +159,6 @@ def read_total_data_array(filepath, dep_var_names, ind_var_names, zone_temp_inds
 
     return(Z, X, U)
 
-def minibatch_X_Y_arrays(X_arr, Y_arr, batchsize):    
-    #list of training, target pair tuples
-    remainder = X_arr.shape[1] % batchsize
-    diff = batchsize - remainder
-    tail_X = X_arr[:,-diff:] 
-    tail_Y = Y_arr[:,-diff:]
-    out_X = [ X_arr[:,i*batchsize:(i+1)*batchsize] for i in range(int(float(X_arr.shape[1])/float(batchsize))) ]
-    out_Y = [ Y_arr[:,i*batchsize:(i+1)*batchsize] for i in range(int(float(Y_arr.shape[1])/float(batchsize)))]
-    out_X = out_X + [tail_X]
-    out_Y = out_Y + [tail_Y]
-    return(out_X, out_Y)
-
 def split_train_val(Z, X, U, order=1, shuff=True, split_prop=0.8):
     all_pairs = []
     for i in range(Z.shape[1] - order):  #not 8760 for first-diff
