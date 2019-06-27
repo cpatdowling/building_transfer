@@ -41,7 +41,7 @@ def minibatch_X_Y_arrays(X_arr, Y_arr, batchsize):
     out_Y = out_Y + [tail_Y]
     return(out_X, out_Y)
         
-def train_linear_state_estimation(net, params, X_train, X_val, Y_train, Y_val, epochs=1000, batch_size=100):
+def train_linear_state_estimation(net, params, X_train, X_val, Y_train, Y_val, epochs=1000, batch_size=100, verbose=True, validate=True):
     loss_func = nn.MSELoss()#SmoothL1Loss()
     optimizer = optim.SGD(net.parameters(),lr=0.01, momentum=0.9)
     for e in range(epochs):
@@ -56,12 +56,13 @@ def train_linear_state_estimation(net, params, X_train, X_val, Y_train, Y_val, e
             loss = loss_func(out, label)
             loss.backward()
             optimizer.step()
-
-    inp_val = Variable(torch.Tensor(X_val.T))
-    label_val = Variable(torch.Tensor(Y_val.T))
-    out_val = net(inp_val)
-    loss_val = loss_func(out_val, label_val)
-    print("Validation MSE: ", loss_val)
+    if validate==True:
+        inp_val = Variable(torch.Tensor(X_val.T))
+        label_val = Variable(torch.Tensor(Y_val.T))
+        out_val = net(inp_val)
+        loss_val = loss_func(out_val, label_val)
+    if verbose==True:
+        print("Validation MSE: ", loss_val)
         
 #Bayesian classifier projection features
 def mat_C(x):
@@ -144,3 +145,42 @@ def sample_classification_transform(A, Xallpoly, Xallpolyf, Yall, Yallf):
     Y_f = Y_f.T
     
     return(X, Y, X_f, Y_f)
+    
+def lag_samples_array(X, lag):
+    X_lag = np.zeros((lag*X.shape[0], X.shape[1] - lag))
+    for i in range(X.shape[1] - lag):
+        X_lag[:,i] = np.asarray(X[:,i:i+lag]).flatten()
+    return(X_lag)
+    
+def plot_polling_val_data(X_val_log_reg, Y_val_log_reg, sklearn_predictor):
+    fault_votes = [0.0]
+    nofault_votes = [0.0]
+    base = [0.0]
+
+    for i in range(X_val_log_reg.shape[1]):
+        #if no fault
+        if Y_val_log_reg[0,i] == 0:
+            Y_hat = sklearn_predictor.predict(X_val_log_reg[:,i].T.reshape(1, -1))
+            if Y_hat == 0:
+                nofault_votes.append(nofault_votes[-1] - 1)
+            if Y_hat == 1:
+                nofault_votes.append(nofault_votes[-1] + 1)
+        #if fault
+        if Y_val_log_reg[0,i] == 1:
+            Y_hat = sklearn_predictor.predict(X_val_log_reg[:,i].T.reshape(1, -1))
+            if Y_hat == 0:
+                fault_votes.append(fault_votes[-1] - 1)
+            if Y_hat == 1:
+                fault_votes.append(fault_votes[-1] + 1)
+            base.append(base[-1] + 0.5)
+    
+    plt.plot(fault_votes, label="fault data")
+    plt.plot(nofault_votes, label="no fault data")
+    plt.plot(base, label="1/2")
+    plt.plot(np.zeros((len(fault_votes,))))
+    plt.ylabel("net positive fault classifications")
+    plt.xlabel("number of samples")
+    plt.title("logistic regression classifier performance")
+    plt.legend()
+    plt.show()
+    
