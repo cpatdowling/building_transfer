@@ -19,6 +19,7 @@ import torch.optim as optim
 #state transition matrix functions
 class linear_nnet(nn.Module):
     #linear model for kernelized inputs
+    #to do logistic regression use criterion = nn.CrossEntropyLoss() & num class output
     def __init__(self, params):
         super(linear_nnet, self).__init__()
         self.D_in = params['FEATURE_DIM']
@@ -41,24 +42,37 @@ def minibatch_X_Y_arrays(X_arr, Y_arr, batchsize):
     out_Y = out_Y + [tail_Y]
     return(out_X, out_Y)
         
-def train_linear_state_estimation(net, params, X_train, X_val, Y_train, Y_val, epochs=1000, batch_size=100, verbose=True, validate=True):
-    loss_func = nn.MSELoss()#SmoothL1Loss()
-    optimizer = optim.SGD(net.parameters(),lr=0.01, momentum=0.9)
+def train_linear_state_estimation(net, params, X_train, X_val, Y_train, Y_val, lrate=0.01, epochs=1000, batch_size=100, l="mse", verbose=True, validate=True):
+    if l == "mse":
+        loss_func = nn.MSELoss()#SmoothL1Loss()
+    if l == "bce":
+        loss_func = nn.CrossEntropyLoss()
+        print("Using Binary Cross Entropy Loss")
+    optimizer = optim.SGD(net.parameters(),lr=lrate, momentum=0.9)
     for e in range(epochs):
         training_losses = []
         X_train_list, Y_train_list = minibatch_X_Y_arrays(X_train, Y_train, batch_size)
         for i in enumerate(X_train_list):
-            inp = Variable(torch.Tensor(X_train_list[i[0]].T))
-            label = Variable(torch.Tensor(Y_train_list[i[0]].T))
+            if l == "bce":
+                inp = Variable(torch.Tensor(X_train_list[i[0]].T))
+                label = Variable(torch.Tensor(Y_train_list[i[0]].T)).type(torch.long)[:,0]#.unsqueeze(-1)
+            else:
+                inp = Variable(torch.Tensor(X_train_list[i[0]].T))
+                label = Variable(torch.Tensor(Y_train_list[i[0]].T))
 
             out = net(inp)
-            optimizer.zero_grad()
             loss = loss_func(out, label)
+            
+            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
     if validate==True:
-        inp_val = Variable(torch.Tensor(X_val.T))
-        label_val = Variable(torch.Tensor(Y_val.T))
+        if l == "bce":
+            inp_val = Variable(torch.Tensor(X_val.T))
+            label_val = Variable(torch.Tensor(Y_val.T)).type(torch.long)[:,0]
+        else:
+            inp_val = Variable(torch.Tensor(X_val.T))
+            label_val = Variable(torch.Tensor(Y_val.T))
         out_val = net(inp_val)
         loss_val = loss_func(out_val, label_val)
     if verbose==True:
