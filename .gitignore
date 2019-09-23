@@ -1,0 +1,3 @@
+data/eplus_sims/*
+*.pyc
+*checkpoint.ipynb
