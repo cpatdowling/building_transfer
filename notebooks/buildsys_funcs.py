@@ -31,6 +31,8 @@ class linear_nnet(nn.Module):
         return(x)
         
 def minibatch_X_Y_arrays(X_arr, Y_arr, batchsize):    
+    if batchsize == 1:
+        return([X_arr], [Y_arr])
     #list of training, target pair tuples
     remainder = X_arr.shape[1] % batchsize
     diff = batchsize - remainder
